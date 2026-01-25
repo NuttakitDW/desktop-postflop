@@ -205,6 +205,54 @@ pub fn game_allocate_memory(
 }
 
 #[tauri::command(async)]
+pub fn game_enable_abstraction(
+    game_state: tauri::State<Mutex<PostFlopGame>>,
+    num_buckets: usize,
+    ehs_samples: usize,
+    use_percentile: bool,
+    seed: u64,
+) -> Option<String> {
+    let mut game = game_state.lock().unwrap();
+    let config = AbstractionConfig {
+        num_buckets: [num_buckets, num_buckets],
+        ehs_samples,
+        use_percentile_bucketing: use_percentile,
+        seed,
+    };
+    game.enable_abstraction(config).err()
+}
+
+#[tauri::command]
+pub fn game_is_abstraction_enabled(game_state: tauri::State<Mutex<PostFlopGame>>) -> bool {
+    let game = game_state.lock().unwrap();
+    game.is_abstraction_enabled()
+}
+
+#[tauri::command]
+pub fn game_memory_usage_with_abstraction(
+    game_state: tauri::State<Mutex<PostFlopGame>>,
+    num_buckets: usize,
+) -> (u64, u64) {
+    let game = game_state.lock().unwrap();
+    let (raw, compressed) = game.memory_usage();
+
+    // Estimate memory reduction based on bucket ratio
+    // Memory scales roughly as num_buckets / num_private_hands
+    let num_hands_oop = game.num_private_hands(0) as f64;
+    let num_hands_ip = game.num_private_hands(1) as f64;
+    let avg_hands = (num_hands_oop + num_hands_ip) / 2.0;
+
+    if avg_hands > 0.0 && num_buckets > 0 {
+        let ratio = (num_buckets as f64 / avg_hands).min(1.0);
+        let raw_abstraction = (raw as f64 * ratio) as u64;
+        let compressed_abstraction = (compressed as f64 * ratio) as u64;
+        (raw_abstraction, compressed_abstraction)
+    } else {
+        (raw, compressed)
+    }
+}
+
+#[tauri::command(async)]
 pub fn game_set_bunching(
     bunching_state: tauri::State<Mutex<Option<BunchingData>>>,
     game_state: tauri::State<Mutex<PostFlopGame>>,

@@ -117,6 +117,110 @@
           : (memoryUsageBunching / (1024 * 1024)).toFixed(0) + "MB"
       }}
     </div>
+
+    <div class="mt-4">
+      Card abstraction (reduces RAM usage):
+      <Tippy
+        class="inline-block cursor-help"
+        max-width="500px"
+        placement="bottom"
+        trigger="mouseenter click"
+        :delay="[200, 0]"
+        :interactive="true"
+      >
+        <QuestionMarkCircleIcon class="w-5 h-5 text-gray-600" />
+        <template #content>
+          <div class="px-1 py-0.5 text-justify">
+            <div>
+              Card abstraction groups similar hands into buckets based on
+              Expected Hand Strength (EHS), reducing memory requirements by
+              solving for buckets instead of individual hands.
+            </div>
+            <ul class="pl-6 list-disc mt-2">
+              <li>
+                <strong>Buckets:</strong> Number of hand groups. Higher = more
+                accurate but more memory. Recommended: 100-500.
+              </li>
+              <li class="mt-1">
+                <strong>EHS Samples:</strong> Monte Carlo samples for equity
+                calculation. Higher = more accurate bucketing. Recommended:
+                1000-5000.
+              </li>
+              <li class="mt-1">
+                <strong>Accuracy tradeoff:</strong> Abstraction typically
+                reduces accuracy by 2-5% compared to exact solving.
+              </li>
+            </ul>
+          </div>
+        </template>
+      </Tippy>
+    </div>
+    <div class="mt-1 ml-2">
+      <label :class="{ 'cursor-pointer': !store.hasSolverRun }">
+        <input
+          v-model="isAbstractionEnabled"
+          class="mr-2 cursor-pointer disabled:cursor-default"
+          type="checkbox"
+          :disabled="store.hasSolverRun"
+        />
+        Enable abstraction
+        <span v-if="isAbstractionEnabled" class="text-orange-500 text-sm ml-2">
+          (reduces accuracy ~2-5%)
+        </span>
+      </label>
+    </div>
+    <div v-if="isAbstractionEnabled" class="mt-2 ml-6">
+      <div class="flex items-center gap-3">
+        <label>
+          Buckets:
+          <input
+            v-model="abstractionBuckets"
+            type="number"
+            :class="
+              'w-20 ml-2 px-2 py-1 rounded-lg text-sm text-center ' +
+              (abstractionBuckets < 50 || abstractionBuckets > 1000
+                ? 'input-error'
+                : '')
+            "
+            :disabled="store.hasSolverRun"
+            min="50"
+            max="1000"
+            step="50"
+            @change="updateAbstractionMemory"
+          />
+        </label>
+        <label>
+          EHS Samples:
+          <input
+            v-model="abstractionSamples"
+            type="number"
+            :class="
+              'w-24 ml-2 px-2 py-1 rounded-lg text-sm text-center ' +
+              (abstractionSamples < 500 || abstractionSamples > 10000
+                ? 'input-error'
+                : '')
+            "
+            :disabled="store.hasSolverRun"
+            min="500"
+            max="10000"
+            step="500"
+          />
+        </label>
+      </div>
+      <div class="mt-2 text-sm text-gray-600">
+        Estimated RAM with abstraction:
+        {{
+          isCompressionEnabled
+            ? memoryUsageAbstractionCompressed >= 1023.5 * 1024 * 1024
+              ? (memoryUsageAbstractionCompressed / (1024 * 1024 * 1024)).toFixed(2) + "GB"
+              : (memoryUsageAbstractionCompressed / (1024 * 1024)).toFixed(0) + "MB"
+            : memoryUsageAbstraction >= 1023.5 * 1024 * 1024
+              ? (memoryUsageAbstraction / (1024 * 1024 * 1024)).toFixed(2) + "GB"
+              : (memoryUsageAbstraction / (1024 * 1024)).toFixed(0) + "MB"
+        }}
+        ({{ ((isCompressionEnabled ? memoryUsageAbstractionCompressed : memoryUsageAbstraction) / (isCompressionEnabled ? memoryUsageRawCompressed : memoryUsageRaw) * 100).toFixed(0) }}% of exact)
+      </div>
+    </div>
     <div
       v-if="memoryUsage > maxMemoryUsage && osName !== 'macos'"
       class="mt-1.5"
@@ -234,7 +338,9 @@
           targetExploitability <= 0 ||
           maxIterations < 0 ||
           maxIterations % 1 !== 0 ||
-          maxIterations > 100000
+          maxIterations > 100000 ||
+          (isAbstractionEnabled && (abstractionBuckets < 50 || abstractionBuckets > 1000)) ||
+          (isAbstractionEnabled && (abstractionSamples < 500 || abstractionSamples > 10000))
         "
         @click="runSolver"
       >
@@ -457,6 +563,13 @@ const numThreads = ref(navigator.hardwareConcurrency || 1);
 const targetExploitability = ref(0.3);
 const maxIterations = ref(1000);
 
+// Abstraction settings
+const isAbstractionEnabled = ref(false);
+const abstractionBuckets = ref(200);
+const abstractionSamples = ref(2000);
+const memoryUsageAbstraction = ref(0);
+const memoryUsageAbstractionCompressed = ref(0);
+
 const isTreeBuilding = ref(false);
 const isTreeBuilt = ref(false);
 const treeStatus = ref("Module not loaded");
@@ -495,7 +608,13 @@ const memoryUsageCompressed = computed(() => {
 });
 
 const memoryUsageSelected = computed(() => {
-  if (isCompressionEnabled.value) {
+  if (isAbstractionEnabled.value) {
+    if (isCompressionEnabled.value) {
+      return memoryUsageAbstractionCompressed.value + (store.isBunchingEnabled && store.bunchingFlop.length > 0 ? memoryUsageBunching.value : 0);
+    } else {
+      return memoryUsageAbstraction.value + (store.isBunchingEnabled && store.bunchingFlop.length > 0 ? memoryUsageBunching.value : 0);
+    }
+  } else if (isCompressionEnabled.value) {
     return memoryUsageCompressed.value;
   } else {
     return memoryUsage.value;
@@ -542,6 +661,13 @@ const timeText = computed(() => {
     return `Time: ${(elapsedTimeMs.value / 1000).toFixed(2)}s`;
   }
 });
+
+const updateAbstractionMemory = async () => {
+  if (isTreeBuilt.value) {
+    [memoryUsageAbstraction.value, memoryUsageAbstractionCompressed.value] =
+      await invokes.gameMemoryUsageWithAbstraction(abstractionBuckets.value);
+  }
+};
 
 const buildTree = async () => {
   isTreeBuilt.value = false;
@@ -596,6 +722,10 @@ const buildTree = async () => {
     await invokes.gameMemoryUsage();
   memoryUsageBunching.value = await invokes.gameMemoryUsageBunching();
 
+  // Fetch memory usage with abstraction
+  [memoryUsageAbstraction.value, memoryUsageAbstractionCompressed.value] =
+    await invokes.gameMemoryUsageWithAbstraction(abstractionBuckets.value);
+
   osName.value = await invokes.osName();
   [availableMemory.value, totalMemory.value] = await invokes.memory();
 
@@ -635,6 +765,23 @@ const runSolver = async () => {
   startTime = performance.now();
 
   await invokes.setNumThreads(numThreads.value);
+
+  // Enable abstraction before memory allocation if requested
+  if (isAbstractionEnabled.value) {
+    const errorString = await invokes.gameEnableAbstraction(
+      abstractionBuckets.value,
+      abstractionSamples.value,
+      true, // use percentile bucketing
+      42    // seed for reproducibility
+    );
+    if (errorString) {
+      solverErrorText.value = "Abstraction error: " + errorString;
+      store.isSolverRunning = false;
+      store.isSolverError = true;
+      return;
+    }
+  }
+
   await invokes.gameAllocateMemory(isCompressionEnabled.value);
 
   if (store.isBunchingEnabled && store.bunchingFlop.length > 0) {
