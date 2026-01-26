@@ -766,7 +766,7 @@ const runSolver = async () => {
 
   await invokes.setNumThreads(numThreads.value);
 
-  // Enable abstraction before memory allocation if requested
+  // Enable or disable abstraction before memory allocation
   if (isAbstractionEnabled.value) {
     const errorString = await invokes.gameEnableAbstraction(
       abstractionBuckets.value,
@@ -774,6 +774,15 @@ const runSolver = async () => {
       true, // use percentile bucketing
       42    // seed for reproducibility
     );
+    if (errorString) {
+      solverErrorText.value = "Abstraction error: " + errorString;
+      store.isSolverRunning = false;
+      store.isSolverError = true;
+      return;
+    }
+  } else {
+    // Disable abstraction if it was previously enabled
+    const errorString = await invokes.gameDisableAbstraction();
     if (errorString) {
       solverErrorText.value = "Abstraction error: " + errorString;
       store.isSolverRunning = false;

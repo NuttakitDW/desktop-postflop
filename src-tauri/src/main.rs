@@ -60,6 +60,7 @@ fn main() {
             game_memory_usage_bunching,
             game_allocate_memory,
             game_enable_abstraction,
+            game_disable_abstraction,
             game_is_abstraction_enabled,
             game_memory_usage_with_abstraction,
             game_set_bunching,

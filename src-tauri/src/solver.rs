@@ -222,6 +222,14 @@ pub fn game_enable_abstraction(
     game.enable_abstraction(config).err()
 }
 
+#[tauri::command(async)]
+pub fn game_disable_abstraction(
+    game_state: tauri::State<Mutex<PostFlopGame>>,
+) -> Option<String> {
+    let mut game = game_state.lock().unwrap();
+    game.disable_abstraction().err()
+}
+
 #[tauri::command]
 pub fn game_is_abstraction_enabled(game_state: tauri::State<Mutex<PostFlopGame>>) -> bool {
     let game = game_state.lock().unwrap();

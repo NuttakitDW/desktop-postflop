@@ -267,6 +267,10 @@ export const gameEnableAbstraction = async (
   });
 };
 
+export const gameDisableAbstraction = async (): Promise<string | null> => {
+  return await invoke("game_disable_abstraction");
+};
+
 export const gameIsAbstractionEnabled = async (): Promise<boolean> => {
   return await invoke("game_is_abstraction_enabled");
 };
