@@ -76,12 +76,15 @@
         <span class="inline-block w-[6.75rem] ml-1">32-bit FP:</span>
         needs
         {{
-          memoryUsageRaw >= 1023.5 * 1024 * 1024
-            ? (memoryUsageRaw / (1024 * 1024 * 1024)).toFixed(2) + "GB"
-            : (memoryUsageRaw / (1024 * 1024)).toFixed(0) + "MB"
+          effectiveMemoryRaw >= 1023.5 * 1024 * 1024
+            ? (effectiveMemoryRaw / (1024 * 1024 * 1024)).toFixed(2) + "GB"
+            : (effectiveMemoryRaw / (1024 * 1024)).toFixed(0) + "MB"
         }}
         RAM
-        {{ memoryUsageRaw > maxMemoryUsage ? "(out of memory)" : "" }}
+        {{ effectiveMemoryRaw > maxMemoryUsage ? "(out of memory)" : "" }}
+        <span v-if="abstractionConfig.enableAbstraction && memoryUsageAbstraction > 0" class="text-green-600 ml-1">
+          ({{ ((1 - effectiveMemoryRaw / memoryUsageRaw) * 100).toFixed(0) }}% saved)
+        </span>
       </label>
     </div>
     <div class="ml-2">
@@ -97,13 +100,16 @@
         <span class="inline-block w-[6.75rem] ml-1">16-bit integer:</span>
         needs
         {{
-          memoryUsageRawCompressed >= 1023.5 * 1024 * 1024
-            ? (memoryUsageRawCompressed / (1024 * 1024 * 1024)).toFixed(2) +
+          effectiveMemoryCompressed >= 1023.5 * 1024 * 1024
+            ? (effectiveMemoryCompressed / (1024 * 1024 * 1024)).toFixed(2) +
               "GB"
-            : (memoryUsageRawCompressed / (1024 * 1024)).toFixed(0) + "MB"
+            : (effectiveMemoryCompressed / (1024 * 1024)).toFixed(0) + "MB"
         }}
         RAM
-        {{ memoryUsageRawCompressed > maxMemoryUsage ? "(out of memory)" : "" }}
+        {{ effectiveMemoryCompressed > maxMemoryUsage ? "(out of memory)" : "" }}
+        <span v-if="abstractionConfig.enableAbstraction && memoryUsageAbstractionCompressed > 0" class="text-green-600 ml-1">
+          ({{ ((1 - effectiveMemoryCompressed / memoryUsageRawCompressed) * 100).toFixed(0) }}% saved)
+        </span>
       </label>
     </div>
     <div
@@ -131,6 +137,85 @@
     >
       RAM limit: {{ (maxMemoryUsage / (1024 * 1024 * 1024)).toFixed(1) }}GB (=
       70% * {{ (totalMemory / (1024 * 1024 * 1024)).toFixed() }}GB total)
+    </div>
+
+    <div class="mt-4">
+      <label :class="{ 'cursor-pointer': !store.hasSolverRun }">
+        <input
+          v-model="abstractionConfig.enableAbstraction"
+          class="mr-2 cursor-pointer disabled:cursor-default"
+          type="checkbox"
+          :disabled="store.hasSolverRun"
+        />
+        Enable Hand Abstraction (K-Means Bucketing)
+      </label>
+      <Tippy
+        class="inline-block cursor-help ml-1"
+        max-width="500px"
+        placement="bottom"
+        trigger="mouseenter click"
+        :delay="[200, 0]"
+        :interactive="true"
+      >
+        <QuestionMarkCircleIcon class="w-5 h-5 text-gray-600" />
+        <template #content>
+          <div class="px-1 py-0.5 text-justify">
+            <div>
+              Hand abstraction groups similar hands into buckets using K-Means
+              clustering based on Expected Hand Strength (EHS). This significantly
+              reduces memory usage and computation time.
+            </div>
+            <ul class="pl-6 list-disc mt-2">
+              <li class="mt-1">
+                <strong>Memory reduction:</strong> ~3-4x less memory (e.g., 3.4GB → 850MB for 50 buckets)
+              </li>
+              <li class="mt-1">
+                <strong>Trade-off:</strong> Slightly less precise results due to hand grouping
+              </li>
+              <li class="mt-1">
+                <strong>Recommended:</strong> 50-200 buckets for most use cases
+              </li>
+            </ul>
+          </div>
+        </template>
+      </Tippy>
+    </div>
+    <div v-if="abstractionConfig.enableAbstraction" class="mt-2 ml-6">
+      <div class="flex items-center">
+        <span class="w-36">Number of buckets:</span>
+        <input
+          v-model="abstractionConfig.numBuckets"
+          type="number"
+          :class="
+            'w-20 px-2 py-1 rounded-lg text-sm text-center ' +
+            (abstractionConfig.numBuckets < 2 || abstractionConfig.numBuckets > 500
+              ? 'input-error'
+              : '')
+          "
+          :disabled="store.hasSolverRun"
+          min="2"
+          max="500"
+        />
+      </div>
+      <div class="flex items-center mt-1">
+        <span class="w-36">K-Means iterations:</span>
+        <input
+          v-model="abstractionConfig.kmeansIterations"
+          type="number"
+          :class="
+            'w-20 px-2 py-1 rounded-lg text-sm text-center ' +
+            (abstractionConfig.kmeansIterations < 1 || abstractionConfig.kmeansIterations > 1000
+              ? 'input-error'
+              : '')
+          "
+          :disabled="store.hasSolverRun"
+          min="1"
+          max="1000"
+        />
+      </div>
+      <div v-if="abstractionBuckets" class="mt-1 text-sm text-gray-600">
+        Buckets: OOP={{ abstractionBuckets[0] }}, IP={{ abstractionBuckets[1] }}
+      </div>
     </div>
 
     <div class="mt-4">
@@ -234,7 +319,13 @@
           targetExploitability <= 0 ||
           maxIterations < 0 ||
           maxIterations % 1 !== 0 ||
-          maxIterations > 100000
+          maxIterations > 100000 ||
+          (abstractionConfig.enableAbstraction && (
+            abstractionConfig.numBuckets < 2 ||
+            abstractionConfig.numBuckets > 500 ||
+            abstractionConfig.kmeansIterations < 1 ||
+            abstractionConfig.kmeansIterations > 1000
+          ))
         "
         @click="runSolver"
       >
@@ -314,12 +405,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   useStore,
   useConfigStore,
   useTmpConfigStore,
   useSavedConfigStore,
+  useAbstractionConfigStore,
   saveConfigTmp,
   saveConfig,
 } from "../store";
@@ -452,6 +544,7 @@ const store = useStore();
 const config = useConfigStore();
 const tmpConfig = useTmpConfigStore();
 const savedConfig = useSavedConfigStore();
+const abstractionConfig = useAbstractionConfigStore();
 
 const numThreads = ref(navigator.hardwareConcurrency || 1);
 const targetExploitability = ref(0.3);
@@ -468,6 +561,10 @@ const maxMemoryUsage = ref(0);
 const availableMemory = ref(0);
 const totalMemory = ref(0);
 const isCompressionEnabled = ref(false);
+const isAbstractionProcessing = ref(false);
+const abstractionBuckets = ref<[number, number] | null>(null);
+const memoryUsageAbstraction = ref(0);
+const memoryUsageAbstractionCompressed = ref(0);
 const solverErrorText = ref("");
 const terminateFlag = ref(false);
 const pauseFlag = ref(false);
@@ -478,19 +575,59 @@ const elapsedTimeMs = ref(-1);
 let startTime = 0;
 let exploitabilityUpdated = false;
 
+// Watch abstraction settings and update memory estimate
+watch(
+  () => [abstractionConfig.enableAbstraction, abstractionConfig.numBuckets],
+  async () => {
+    if (!isTreeBuilt.value || store.hasSolverRun) return;
+
+    if (abstractionConfig.enableAbstraction && abstractionConfig.numBuckets >= 2) {
+      try {
+        const [raw, compressed] = await invokes.gameMemoryUsageWithAbstraction(
+          abstractionConfig.numBuckets
+        );
+        memoryUsageAbstraction.value = raw;
+        memoryUsageAbstractionCompressed.value = compressed;
+      } catch {
+        // Fallback: use current memory (abstraction estimate failed)
+        memoryUsageAbstraction.value = memoryUsageRaw.value;
+        memoryUsageAbstractionCompressed.value = memoryUsageRawCompressed.value;
+      }
+    }
+  },
+  { immediate: true }
+);
+
+// Computed: effective memory based on abstraction setting
+const effectiveMemoryRaw = computed(() => {
+  if (abstractionConfig.enableAbstraction && memoryUsageAbstraction.value > 0) {
+    return memoryUsageAbstraction.value;
+  }
+  return memoryUsageRaw.value;
+});
+
+const effectiveMemoryCompressed = computed(() => {
+  if (abstractionConfig.enableAbstraction && memoryUsageAbstractionCompressed.value > 0) {
+    return memoryUsageAbstractionCompressed.value;
+  }
+  return memoryUsageRawCompressed.value;
+});
+
 const memoryUsage = computed(() => {
+  const base = effectiveMemoryRaw.value;
   if (store.isBunchingEnabled && store.bunchingFlop.length > 0) {
-    return memoryUsageRaw.value + memoryUsageBunching.value;
+    return base + memoryUsageBunching.value;
   } else {
-    return memoryUsageRaw.value;
+    return base;
   }
 });
 
 const memoryUsageCompressed = computed(() => {
+  const base = effectiveMemoryCompressed.value;
   if (store.isBunchingEnabled && store.bunchingFlop.length > 0) {
-    return memoryUsageRawCompressed.value + memoryUsageBunching.value;
+    return base + memoryUsageBunching.value;
   } else {
-    return memoryUsageRawCompressed.value;
+    return base;
   }
 });
 
@@ -515,7 +652,9 @@ const areFlopMatching = computed(() => {
 });
 
 const iterationText = computed(() => {
-  if (currentIteration.value === -1) {
+  if (currentIteration.value === -3) {
+    return "Computing hand abstraction (K-Means clustering)...";
+  } else if (currentIteration.value === -1) {
     return "Allocating memory...";
   } else if (currentIteration.value === -2) {
     return "Collecting bunching data...";
@@ -596,6 +735,23 @@ const buildTree = async () => {
     await invokes.gameMemoryUsage();
   memoryUsageBunching.value = await invokes.gameMemoryUsageBunching();
 
+  // Reset abstraction memory estimates
+  memoryUsageAbstraction.value = 0;
+  memoryUsageAbstractionCompressed.value = 0;
+
+  // Get abstraction memory estimate if enabled
+  if (abstractionConfig.enableAbstraction && abstractionConfig.numBuckets >= 2) {
+    try {
+      const [raw, compressed] = await invokes.gameMemoryUsageWithAbstraction(
+        abstractionConfig.numBuckets
+      );
+      memoryUsageAbstraction.value = raw;
+      memoryUsageAbstractionCompressed.value = compressed;
+    } catch {
+      // Ignore errors, will use full memory
+    }
+  }
+
   osName.value = await invokes.osName();
   [availableMemory.value, totalMemory.value] = await invokes.memory();
 
@@ -621,6 +777,9 @@ const buildTree = async () => {
   store.isSolverPaused = false;
   store.isSolverFinished = false;
   store.isSolverError = false;
+  store.isAbstractionEnabled = false;
+  store.numBuckets = null;
+  abstractionBuckets.value = null;
 };
 
 const runSolver = async () => {
@@ -629,12 +788,40 @@ const runSolver = async () => {
   currentIteration.value = -1;
   exploitability.value = Number.POSITIVE_INFINITY;
   elapsedTimeMs.value = -1;
+  abstractionBuckets.value = null;
 
   store.isSolverRunning = true;
 
   startTime = performance.now();
 
   await invokes.setNumThreads(numThreads.value);
+
+  // Enable abstraction before memory allocation if enabled
+  if (abstractionConfig.enableAbstraction) {
+    currentIteration.value = -3; // Show "Computing hand abstraction..."
+    isAbstractionProcessing.value = true;
+    try {
+      const result = await invokes.gameEnableAbstraction(
+        abstractionConfig.numBuckets,
+        abstractionConfig.kmeansIterations
+      );
+      abstractionBuckets.value = result.num_buckets;
+      store.isAbstractionEnabled = true;
+      store.numBuckets = result.num_buckets;
+      // Update memory usage display after abstraction
+      memoryUsageRaw.value = Number(result.memory_usage[0]);
+      memoryUsageRawCompressed.value = Number(result.memory_usage[1]);
+    } catch (error) {
+      solverErrorText.value = "Error enabling abstraction: " + error;
+      store.isSolverRunning = false;
+      store.isSolverError = true;
+      isAbstractionProcessing.value = false;
+      return;
+    }
+    isAbstractionProcessing.value = false;
+  }
+
+  currentIteration.value = -1; // Show "Allocating memory..."
   await invokes.gameAllocateMemory(isCompressionEnabled.value);
 
   if (store.isBunchingEnabled && store.bunchingFlop.length > 0) {

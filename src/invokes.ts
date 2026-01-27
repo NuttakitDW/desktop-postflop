@@ -245,12 +245,30 @@ export const gameMemoryUsage = async (): Promise<number[]> => {
   return await invoke("game_memory_usage");
 };
 
+export const gameMemoryUsageWithAbstraction = async (
+  numBuckets: number
+): Promise<number[]> => {
+  return await invoke("game_memory_usage_with_abstraction", { numBuckets });
+};
+
 export const gameMemoryUsageBunching = async (): Promise<number> => {
   return await invoke("game_memory_usage_bunching");
 };
 
 export const gameAllocateMemory = async (enableCompression: boolean) => {
   await invoke("game_allocate_memory", { enableCompression });
+};
+
+export type AbstractionEnableResponse = {
+  num_buckets: [number, number];
+  memory_usage: [number, number];
+};
+
+export const gameEnableAbstraction = async (
+  numBuckets: number,
+  maxIterations: number
+): Promise<AbstractionEnableResponse> => {
+  return await invoke("game_enable_abstraction", { numBuckets, maxIterations });
 };
 
 export const gameSetBunching = async (): Promise<string | null> => {

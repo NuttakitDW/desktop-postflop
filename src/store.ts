@@ -12,6 +12,15 @@ export type SideView =
   | "run-solver"
   | "about";
 
+// Abstraction configuration store
+export const useAbstractionConfigStore = defineStore("abstractionConfig", {
+  state: () => ({
+    enableAbstraction: false,
+    numBuckets: 50,
+    kmeansIterations: 100,
+  }),
+});
+
 export const saveConfigTmp = () => {
   const config = useConfigStore();
   const tmpConfig = useTmpConfigStore();
