@@ -104,6 +104,12 @@ export const useStore = defineStore("app", {
     isSolverFinished: false,
     isSolverError: false,
     isFinalizing: false,
+    // Loaded file state
+    isFileLoaded: false,
+    loadedFileMemo: "",
+    isAbstractionEnabled: false,
+    numBuckets: null as [number, number] | null,
+    storageMode: "river" as "flop" | "turn" | "river",
   }),
 
   getters: {
@@ -113,7 +119,8 @@ export const useStore = defineStore("app", {
         state.isSolverPaused ||
         state.isSolverFinished ||
         state.isSolverError ||
-        state.isFinalizing
+        state.isFinalizing ||
+        state.isFileLoaded
       );
     },
   },

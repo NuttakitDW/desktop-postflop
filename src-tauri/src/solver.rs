@@ -4,6 +4,31 @@ use rayon::ThreadPool;
 use serde::Serialize;
 use std::sync::Mutex;
 
+// File loading/saving response types
+#[derive(Serialize)]
+pub struct GameLoadResponse {
+    pub memo: String,
+    pub is_solved: bool,
+    pub is_abstraction_enabled: bool,
+    pub num_buckets: Option<[usize; 2]>,
+    pub storage_mode: String,
+    pub board: Vec<u8>,
+    pub starting_pot: i32,
+    pub effective_stack: i32,
+    pub private_cards: [Vec<u16>; 2],
+}
+
+#[derive(Serialize)]
+pub struct GameInfoResponse {
+    pub is_solved: bool,
+    pub is_abstraction_enabled: bool,
+    pub num_buckets: Option<[usize; 2]>,
+    pub storage_mode: String,
+    pub board: Vec<u8>,
+    pub starting_pot: i32,
+    pub effective_stack: i32,
+}
+
 #[inline]
 fn decode_action(action: &str) -> Action {
     match action {
@@ -530,5 +555,108 @@ pub fn game_get_chance_reports(
         ev,
         eqr,
         strategy,
+    }
+}
+
+fn board_state_to_string(state: BoardState) -> String {
+    match state {
+        BoardState::Flop => "flop".to_string(),
+        BoardState::Turn => "turn".to_string(),
+        BoardState::River => "river".to_string(),
+    }
+}
+
+#[tauri::command(async)]
+pub fn game_load_file(
+    game_state: tauri::State<Mutex<PostFlopGame>>,
+    path: String,
+) -> Result<GameLoadResponse, String> {
+    let (loaded_game, memo): (PostFlopGame, String) =
+        load_data_from_file(&path, None).map_err(|e| e.to_string())?;
+
+    let is_solved = loaded_game.is_solved();
+    let is_abstraction_enabled = loaded_game.is_abstraction_enabled();
+    let num_buckets = loaded_game.abstraction_data().map(|d| [d.num_buckets(0), d.num_buckets(1)]);
+    let storage_mode = board_state_to_string(loaded_game.storage_mode());
+
+    let card_config = loaded_game.card_config();
+    let mut board = card_config.flop.to_vec();
+    if card_config.turn != NOT_DEALT {
+        board.push(card_config.turn);
+    }
+    if card_config.river != NOT_DEALT {
+        board.push(card_config.river);
+    }
+
+    let tree_config = loaded_game.tree_config();
+    let starting_pot = tree_config.starting_pot;
+    let effective_stack = tree_config.effective_stack;
+
+    let convert = |player: usize| {
+        loaded_game
+            .private_cards(player)
+            .iter()
+            .map(|&(c1, c2)| (c1 as u16) | (c2 as u16) << 8)
+            .collect()
+    };
+    let private_cards = [convert(0), convert(1)];
+
+    // Store the loaded game
+    *game_state.lock().unwrap() = loaded_game;
+
+    Ok(GameLoadResponse {
+        memo,
+        is_solved,
+        is_abstraction_enabled,
+        num_buckets,
+        storage_mode,
+        board,
+        starting_pot,
+        effective_stack,
+        private_cards,
+    })
+}
+
+#[tauri::command(async)]
+pub fn game_save_file(
+    game_state: tauri::State<Mutex<PostFlopGame>>,
+    path: String,
+    memo: String,
+    compression_level: Option<i32>,
+) -> Result<(), String> {
+    let game = game_state.lock().unwrap();
+    save_data_to_file(&*game, &memo, &path, compression_level).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn game_info(game_state: tauri::State<Mutex<PostFlopGame>>) -> GameInfoResponse {
+    let game = game_state.lock().unwrap();
+
+    let is_solved = game.is_solved();
+    let is_abstraction_enabled = game.is_abstraction_enabled();
+    let num_buckets = game.abstraction_data().map(|d| [d.num_buckets(0), d.num_buckets(1)]);
+    let storage_mode = board_state_to_string(game.storage_mode());
+
+    let card_config = game.card_config();
+    let mut board = card_config.flop.to_vec();
+    if card_config.turn != NOT_DEALT {
+        board.push(card_config.turn);
+    }
+    if card_config.river != NOT_DEALT {
+        board.push(card_config.river);
+    }
+
+    let tree_config = game.tree_config();
+    let starting_pot = tree_config.starting_pot;
+    let effective_stack = tree_config.effective_stack;
+
+    GameInfoResponse {
+        is_solved,
+        is_abstraction_enabled,
+        num_buckets,
+        storage_mode,
+        board,
+        starting_pot,
+        effective_stack,
     }
 }

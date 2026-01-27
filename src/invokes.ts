@@ -348,3 +348,43 @@ export const gameGetChanceReports = async (
     strategy: reports.strategy,
   };
 };
+
+/* File loading/saving */
+
+export type GameLoadResponse = {
+  memo: string;
+  is_solved: boolean;
+  is_abstraction_enabled: boolean;
+  num_buckets: [number, number] | null;
+  storage_mode: "flop" | "turn" | "river";
+  board: number[];
+  starting_pot: number;
+  effective_stack: number;
+  private_cards: number[][];
+};
+
+export type GameInfoResponse = {
+  is_solved: boolean;
+  is_abstraction_enabled: boolean;
+  num_buckets: [number, number] | null;
+  storage_mode: "flop" | "turn" | "river";
+  board: number[];
+  starting_pot: number;
+  effective_stack: number;
+};
+
+export const gameLoadFile = async (path: string): Promise<GameLoadResponse> => {
+  return await invoke("game_load_file", { path });
+};
+
+export const gameSaveFile = async (
+  path: string,
+  memo: string,
+  compressionLevel: number | null = null
+): Promise<void> => {
+  await invoke("game_save_file", { path, memo, compressionLevel });
+};
+
+export const gameInfo = async (): Promise<GameInfoResponse> => {
+  return await invoke("game_info");
+};
