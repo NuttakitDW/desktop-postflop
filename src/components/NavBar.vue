@@ -104,6 +104,10 @@ const loadFile = async () => {
 
     if (typeof path !== "string") return;
 
+    // Show loading indicator
+    store.isFileLoading = true;
+    store.fileLoadingMessage = "Loading solution file...";
+
     const result = await gameLoadFile(path);
 
     // Update store state
@@ -130,8 +134,14 @@ const loadFile = async () => {
     // Navigate to results
     store.navView = "results";
 
+    // Hide loading indicator
+    store.isFileLoading = false;
+    store.fileLoadingMessage = "";
+
   } catch (e) {
     console.error("Failed to load file:", e);
+    store.isFileLoading = false;
+    store.fileLoadingMessage = "";
     alert("Failed to load file: " + e);
   }
 };

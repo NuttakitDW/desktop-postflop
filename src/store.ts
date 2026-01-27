@@ -115,6 +115,8 @@ export const useStore = defineStore("app", {
     isFinalizing: false,
     // Loaded file state
     isFileLoaded: false,
+    isFileLoading: false,
+    fileLoadingMessage: "",
     loadedFileMemo: "",
     isAbstractionEnabled: false,
     numBuckets: null as [number, number] | null,
