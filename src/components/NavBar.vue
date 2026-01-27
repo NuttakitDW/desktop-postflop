@@ -30,19 +30,19 @@
           </button>
         </div>
 
-        <!-- Abstraction indicator -->
-        <div v-if="store.isAbstractionEnabled" class="flex items-center ml-4 px-2 py-1 bg-amber-600 rounded text-sm">
-          <BeakerIcon class="w-4 h-4 mr-1" />
-          Abstraction ({{ store.numBuckets?.[0] ?? 0 }}/{{ store.numBuckets?.[1] ?? 0 }} buckets)
-        </div>
-
-        <!-- Storage mode indicator -->
-        <div v-if="store.isFileLoaded" class="flex items-center ml-2 px-2 py-1 bg-slate-600 rounded text-sm capitalize">
-          {{ store.storageMode }}
-        </div>
       </div>
 
-      <div class="flex ml-auto h-full items-center z-10">
+      <div class="flex ml-auto h-full items-center z-10 gap-2">
+        <!-- Storage mode indicator -->
+        <div v-if="store.isFileLoaded" class="flex items-center px-2 py-1 bg-slate-600 rounded text-sm capitalize">
+          {{ store.storageMode }}
+        </div>
+
+        <!-- Abstraction indicator -->
+        <div v-if="store.isAbstractionEnabled" class="flex items-center px-2 py-1 bg-amber-600 rounded text-sm">
+          <BeakerIcon class="w-4 h-4 mr-1" />
+          {{ store.numBuckets?.[0] ?? 0 }}/{{ store.numBuckets?.[1] ?? 0 }} buckets
+        </div>
         <a
           href="https://github.com/b-inary/desktop-postflop"
           class="flex px-4 h-full items-center font-semibold hover:bg-slate-700"

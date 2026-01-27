@@ -250,6 +250,7 @@ pub fn game_enable_abstraction(
     num_buckets: usize,
     max_iterations: usize,
 ) -> Result<AbstractionEnableResponse, String> {
+    let start = std::time::Instant::now();
     let mut game = game_state.lock().unwrap();
 
     let config = AbstractionConfig {
@@ -258,6 +259,7 @@ pub fn game_enable_abstraction(
     };
 
     game.enable_abstraction(&config)?;
+    println!("enable_abstraction took {:?}", start.elapsed());
 
     let num_buckets_result = [
         game.effective_hand_count(0),
@@ -288,9 +290,48 @@ pub fn game_solve_step(
     pool_state: tauri::State<Mutex<ThreadPool>>,
     current_iteration: u32,
 ) {
+    let start = std::time::Instant::now();
     let game = game_state.lock().unwrap();
     let pool = pool_state.lock().unwrap();
     pool.install(|| solve_step(&*game, current_iteration));
+    let elapsed = start.elapsed();
+    if current_iteration < 5 || current_iteration % 100 == 0 {
+        println!("solve_step({}) took {:?}", current_iteration, elapsed);
+    }
+}
+
+#[derive(Serialize)]
+pub struct SolveResult {
+    pub iterations: u32,
+    pub exploitability: f32,
+    pub time_ms: u64,
+}
+
+#[tauri::command(async)]
+pub fn game_solve(
+    game_state: tauri::State<Mutex<PostFlopGame>>,
+    pool_state: tauri::State<Mutex<ThreadPool>>,
+    max_iterations: u32,
+    target_exploitability: f32,
+) -> SolveResult {
+    let start = std::time::Instant::now();
+    let pool = pool_state.lock().unwrap();
+
+    // Acquire game lock inside pool.install to avoid Send issue
+    let exploitability = pool.install(|| {
+        let mut game = game_state.lock().unwrap();
+        solve(&mut *game, max_iterations, target_exploitability, true)
+    });
+
+    let time_ms = start.elapsed().as_millis() as u64;
+    println!("game_solve completed: {} iterations, exploitability={:.4}, time={}ms",
+             max_iterations, exploitability, time_ms);
+
+    SolveResult {
+        iterations: max_iterations,
+        exploitability,
+        time_ms,
+    }
 }
 
 #[tauri::command(async)]
@@ -298,9 +339,12 @@ pub fn game_exploitability(
     game_state: tauri::State<Mutex<PostFlopGame>>,
     pool_state: tauri::State<Mutex<ThreadPool>>,
 ) -> f32 {
+    let start = std::time::Instant::now();
     let game = game_state.lock().unwrap();
     let pool = pool_state.lock().unwrap();
-    pool.install(|| compute_exploitability(&*game))
+    let result = pool.install(|| compute_exploitability(&*game));
+    println!("compute_exploitability took {:?}, result = {}", start.elapsed(), result);
+    result
 }
 
 #[tauri::command(async)]

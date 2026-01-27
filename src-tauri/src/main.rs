@@ -63,6 +63,7 @@ fn main() {
             game_enable_abstraction,
             game_set_bunching,
             game_solve_step,
+            game_solve,
             game_exploitability,
             game_finalize,
             game_apply_history,

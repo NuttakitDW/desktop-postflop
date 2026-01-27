@@ -794,8 +794,6 @@ const runSolver = async () => {
 
   startTime = performance.now();
 
-  await invokes.setNumThreads(numThreads.value);
-
   // Enable abstraction before memory allocation if enabled
   if (abstractionConfig.enableAbstraction) {
     currentIteration.value = -3; // Show "Computing hand abstraction..."
@@ -820,6 +818,9 @@ const runSolver = async () => {
     }
     isAbstractionProcessing.value = false;
   }
+
+  // Set thread count BEFORE allocating memory and computing exploitability
+  await invokes.setNumThreads(numThreads.value);
 
   currentIteration.value = -1; // Show "Allocating memory..."
   await invokes.gameAllocateMemory(isCompressionEnabled.value);
