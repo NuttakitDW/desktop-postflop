@@ -34,3 +34,13 @@ custom-protocol = [ "tauri/custom-protocol" ]
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# Optimize dependencies in dev mode for faster file loading
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev.package.postflop-solver]
+opt-level = 3
+
+[profile.dev.package.zstd]
+opt-level = 3
