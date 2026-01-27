@@ -18,6 +18,9 @@ use std::sync::Mutex;
 use sysinfo::{System, SystemExt};
 
 fn main() {
+    // Initialize logging for debugging file loads
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     tauri::Builder::default()
         .manage(Mutex::new(RangeManager::default()))
         .manage(Mutex::new(default_action_tree()))
