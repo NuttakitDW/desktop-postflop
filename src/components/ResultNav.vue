@@ -389,6 +389,11 @@ let totalBetAmountAppended = [0, 0];
 watch(isHandlerUpdated, async () => {
   if (!isHandlerUpdated.value) return;
 
+  // Reset navigation state when loading a new game/file
+  selectedSpotIndex.value = -1;
+  selectedChanceIndex.value = -1;
+  rates.value = null;
+
   const l = config.board.length;
   const spot: SpotRoot = {
     type: "root",

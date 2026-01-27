@@ -410,8 +410,13 @@ pub fn game_actions_after(
     if append.is_empty() {
         return actions(&game);
     }
+    println!("[DEBUG] game_actions_after: append={:?}", append);
+    println!("[DEBUG] current history={:?}, is_chance={}, is_terminal={}",
+        game.history(), game.is_chance_node(), game.is_terminal_node());
+    println!("[DEBUG] available_actions={:?}", game.available_actions());
     let history = game.history().to_vec();
     for &action in &append {
+        println!("[DEBUG] playing action {} (usize={})", action, action_usize(action));
         game.play(action_usize(action));
     }
     let ret = actions(&game);
