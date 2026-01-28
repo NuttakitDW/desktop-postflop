@@ -4,19 +4,11 @@ use rayon::ThreadPool;
 use serde::Serialize;
 use std::sync::Mutex;
 
-#[derive(Serialize)]
-pub struct AbstractionEnableResponse {
-    pub num_buckets: [usize; 2],
-    pub memory_usage: (u64, u64),
-}
-
 // File loading/saving response types
 #[derive(Serialize)]
 pub struct GameLoadResponse {
     pub memo: String,
     pub is_solved: bool,
-    pub is_abstraction_enabled: bool,
-    pub num_buckets: Option<[usize; 2]>,
     pub storage_mode: String,
     pub board: Vec<u8>,
     pub starting_pot: i32,
@@ -27,8 +19,6 @@ pub struct GameLoadResponse {
 #[derive(Serialize)]
 pub struct GameInfoResponse {
     pub is_solved: bool,
-    pub is_abstraction_enabled: bool,
-    pub num_buckets: Option<[usize; 2]>,
     pub storage_mode: String,
     pub board: Vec<u8>,
     pub starting_pot: i32,
@@ -221,15 +211,6 @@ pub fn game_memory_usage(game_state: tauri::State<Mutex<PostFlopGame>>) -> (u64,
 }
 
 #[tauri::command]
-pub fn game_memory_usage_with_abstraction(
-    game_state: tauri::State<Mutex<PostFlopGame>>,
-    num_buckets: usize,
-) -> (u64, u64) {
-    let game = game_state.lock().unwrap();
-    game.memory_usage_with_abstraction(num_buckets)
-}
-
-#[tauri::command]
 pub fn game_memory_usage_bunching(game_state: tauri::State<Mutex<PostFlopGame>>) -> u64 {
     let game = game_state.lock().unwrap();
     game.memory_usage_bunching()
@@ -242,35 +223,6 @@ pub fn game_allocate_memory(
 ) {
     let mut game = game_state.lock().unwrap();
     game.allocate_memory(enable_compression);
-}
-
-#[tauri::command(async)]
-pub fn game_enable_abstraction(
-    game_state: tauri::State<Mutex<PostFlopGame>>,
-    num_buckets: usize,
-    max_iterations: usize,
-) -> Result<AbstractionEnableResponse, String> {
-    let start = std::time::Instant::now();
-    let mut game = game_state.lock().unwrap();
-
-    let config = AbstractionConfig {
-        num_buckets,
-        max_iterations,
-    };
-
-    game.enable_abstraction(&config)?;
-    println!("enable_abstraction took {:?}", start.elapsed());
-
-    let num_buckets_result = [
-        game.effective_hand_count(0),
-        game.effective_hand_count(1),
-    ];
-    let memory_usage = game.memory_usage();
-
-    Ok(AbstractionEnableResponse {
-        num_buckets: num_buckets_result,
-        memory_usage,
-    })
 }
 
 #[tauri::command(async)]
@@ -690,8 +642,6 @@ pub fn game_load_file(
     println!("[UI] Load completed in {:?}", load_start.elapsed());
 
     let is_solved = loaded_game.is_solved();
-    let is_abstraction_enabled = loaded_game.is_abstraction_enabled();
-    let num_buckets = loaded_game.abstraction_data().map(|d| [d.num_buckets(0), d.num_buckets(1)]);
     let storage_mode = board_state_to_string(loaded_game.storage_mode());
 
     let card_config = loaded_game.card_config();
@@ -724,8 +674,6 @@ pub fn game_load_file(
     Ok(GameLoadResponse {
         memo,
         is_solved,
-        is_abstraction_enabled,
-        num_buckets,
         storage_mode,
         board,
         starting_pot,
@@ -750,8 +698,6 @@ pub fn game_info(game_state: tauri::State<Mutex<PostFlopGame>>) -> GameInfoRespo
     let game = game_state.lock().unwrap();
 
     let is_solved = game.is_solved();
-    let is_abstraction_enabled = game.is_abstraction_enabled();
-    let num_buckets = game.abstraction_data().map(|d| [d.num_buckets(0), d.num_buckets(1)]);
     let storage_mode = board_state_to_string(game.storage_mode());
 
     let card_config = game.card_config();
@@ -769,8 +715,6 @@ pub fn game_info(game_state: tauri::State<Mutex<PostFlopGame>>) -> GameInfoRespo
 
     GameInfoResponse {
         is_solved,
-        is_abstraction_enabled,
-        num_buckets,
         storage_mode,
         board,
         starting_pot,

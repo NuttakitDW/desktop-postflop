@@ -38,11 +38,6 @@
           {{ store.storageMode }}
         </div>
 
-        <!-- Abstraction indicator -->
-        <div v-if="store.isAbstractionEnabled" class="flex items-center px-2 py-1 bg-amber-600 rounded text-sm">
-          <BeakerIcon class="w-4 h-4 mr-1" />
-          {{ store.numBuckets?.[0] ?? 0 }}/{{ store.numBuckets?.[1] ?? 0 }} buckets
-        </div>
         <a
           href="https://github.com/b-inary/desktop-postflop"
           class="flex px-4 h-full items-center font-semibold hover:bg-slate-700"
@@ -88,7 +83,7 @@
 
 <script setup lang="ts">
 import { useStore, useConfigStore, useSavedConfigStore } from "../store";
-import { ComputerDesktopIcon, ChartBarIcon, FolderOpenIcon, ArrowDownTrayIcon, BeakerIcon } from "@heroicons/vue/24/solid";
+import { ComputerDesktopIcon, ChartBarIcon, FolderOpenIcon, ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
 import { open, save } from "@tauri-apps/api/dialog";
 import { gameLoadFile, gameSaveFile } from "../invokes";
 
@@ -113,8 +108,6 @@ const loadFile = async () => {
     // Update store state
     store.isFileLoaded = true;
     store.loadedFileMemo = result.memo;
-    store.isAbstractionEnabled = result.is_abstraction_enabled;
-    store.numBuckets = result.num_buckets;
     store.storageMode = result.storage_mode;
     store.isSolverFinished = result.is_solved;
 
