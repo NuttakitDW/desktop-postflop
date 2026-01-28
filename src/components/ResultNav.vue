@@ -264,16 +264,17 @@ import {
 } from "@heroicons/vue/20/solid";
 
 const foldColor = { red: 0x3b, green: 0x82, blue: 0xf6 }; // blue-500
-const checkColor = { red: 0x22, green: 0xc5, blue: 0x5e }; // green-500
-const callColor = { red: 0x22, green: 0xc5, blue: 0x5e }; // green-500
+const checkColor = { red: 0x5c, green: 0x94, blue: 0xfc }; // SKY BLUE (Mario background) #5C94FC
+const callColor = { red: 0x5c, green: 0x94, blue: 0xfc }; // SKY BLUE
+// 🍄 EXACT NES MARIO COLORS! 🍄
 const betColorGradient = [
-  { red: 0xf5, green: 0x9e, blue: 0x0b }, // amber-500
-  { red: 0xf9, green: 0x73, blue: 0x16 }, // orange-500
-  { red: 0xef, green: 0x44, blue: 0x44 }, // red-500
-  { red: 0xec, green: 0x48, blue: 0x99 }, // pink-500
-  { red: 0xd9, green: 0x46, blue: 0xef }, // fuchsia-500
-  { red: 0xa8, green: 0x55, blue: 0xf7 }, // purple-500
-  { red: 0x8b, green: 0x5c, blue: 0xf6 }, // violet-500
+  { red: 0x6b, green: 0x8e, blue: 0x23 }, // Olive/Brown (hair/shoes) #6B8E23
+  { red: 0x6b, green: 0x8e, blue: 0x23 }, // Olive/Brown
+  { red: 0xe3, green: 0x9d, blue: 0x25 }, // Orange (skin) #E39D25
+  { red: 0xe3, green: 0x9d, blue: 0x25 }, // Orange (skin)
+  { red: 0xb1, green: 0x34, blue: 0x25 }, // NES Red (hat/shirt) #B13425
+  { red: 0xb1, green: 0x34, blue: 0x25 }, // NES Red
+  { red: 0xb1, green: 0x34, blue: 0x25 }, // NES Red
 ];
 
 const actionColor = (
