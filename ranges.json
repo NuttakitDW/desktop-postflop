@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "name": "ranges",
+  "data": [
+    {
+      "path": [
+        "New range"
+      ],
+      "isGroup": false,
+      "value": "22+"
+    },
+    {
+      "path": [
+        "New range (2)"
+      ],
+      "isGroup": false,
+      "value": "22+,A2,K3,Q4,J5,T6,97"
+    }
+  ]
+}

@@ -28,6 +28,15 @@
             <ArrowDownTrayIcon class="w-4 h-4 mr-1.5" />
             Save
           </button>
+          <button
+            v-if="store.isFileLoaded"
+            class="flex px-3 h-8 items-center text-sm font-semibold rounded hover:bg-blue-700 bg-blue-800"
+            @click="exportJSON"
+            title="Export game data as JSON preview"
+          >
+            <ArrowDownTrayIcon class="w-4 h-4 mr-1.5" />
+            Export JSON
+          </button>
         </div>
 
       </div>
@@ -85,7 +94,8 @@
 import { useStore, useConfigStore, useSavedConfigStore } from "../store";
 import { ComputerDesktopIcon, ChartBarIcon, FolderOpenIcon, ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
 import { open, save } from "@tauri-apps/api/dialog";
-import { gameLoadFile, gameSaveFile } from "../invokes";
+import { gameLoadFile, gameSaveFile, gameInfo } from "../invokes";
+import { writeTextFile } from "@tauri-apps/api/fs";
 
 const store = useStore();
 const config = useConfigStore();
@@ -124,8 +134,9 @@ const loadFile = async () => {
       effectiveStack: result.effective_stack,
     });
 
-    // Navigate to results
-    store.navView = "results";
+    // Navigate to solver view and show JSON template
+    store.navView = "solver";
+    store.sideView = "json-viewer";
 
     // Hide loading indicator
     store.isFileLoading = false;
@@ -136,6 +147,41 @@ const loadFile = async () => {
     store.isFileLoading = false;
     store.fileLoadingMessage = "";
     alert("Failed to load file: " + e);
+  }
+};
+
+const exportJSON = async () => {
+  try {
+    const path = await save({
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      defaultPath: "game-data.json",
+    });
+
+    if (typeof path !== "string") return;
+
+    // Get current game info
+    const info = await gameInfo();
+
+    // Create JSON export with current game state
+    const exportData = {
+      memo: store.loadedFileMemo,
+      is_solved: info.is_solved,
+      storage_mode: info.storage_mode,
+      board: info.board,
+      starting_pot: info.starting_pot,
+      effective_stack: info.effective_stack,
+      exported_at: new Date().toISOString(),
+      note: "This is a JSON preview of the binary game file. It contains metadata only, not the full solver state.",
+    };
+
+    // Write JSON file
+    await writeTextFile(path, JSON.stringify(exportData, null, 2));
+
+    alert("JSON exported successfully!\n\nNote: This JSON contains metadata only. To save the full game state, use the 'Save' button to create a .flop file.");
+
+  } catch (e) {
+    console.error("Failed to export JSON:", e);
+    alert("Failed to export JSON: " + e);
   }
 };
 

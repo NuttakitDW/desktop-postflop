@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "memo": "Example Game Memo (e.g., BTN vs BB Single Raised Pot)",
+    "is_solved": true,
+    "storage_mode": "flop",
+    "board": [
+        48,
+        44,
+        20
+    ],
+    "starting_pot": 60,
+    "effective_stack": 940,
+    "exported_at": "2026-02-04T10:00:00.000Z",
+    "note": "This is a JSON preview of the binary game file. It contains metadata only, not the full solver state.",
+    "_decoded_info_for_reference": {
+        "board_readable": "Kh Qh 7c",
+        "encoding_formula": "rank * 4 + suit",
+        "ranks": "0=2, 1=3, ..., 9=T, 10=J, 11=Q, 12=A",
+        "suits": "0=c (Club), 1=d (Diamond), 2=h (Heart), 3=s (Spade)"
+    }
+}

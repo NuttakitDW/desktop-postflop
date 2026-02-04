@@ -144,7 +144,7 @@ pub fn tree_new(
         add_allin_threshold,
         force_allin_threshold,
         merging_threshold,
-        // max_raises_per_street: 0, // 0 = unlimited
+        max_raises_per_street: 0, // 0 = unlimited
     };
 
     let mut tree = ActionTree::new(config).unwrap();

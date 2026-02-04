@@ -50,6 +50,16 @@
       Run Solver
     </button>
 
+    <button
+      :class="itemStyle('json-viewer')"
+      @click="store.sideView = 'json-viewer'"
+    >
+      JSON Template
+      <span v-if="store.isFileLoaded" class="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+        Loaded
+      </span>
+    </button>
+
     <button :class="itemStyle('about')" @click="store.sideView = 'about'">
       About
     </button>

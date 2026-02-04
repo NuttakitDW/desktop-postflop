@@ -81,6 +81,9 @@
         <div v-show="store.sideView === 'run-solver'">
           <RunSolver />
         </div>
+        <div v-show="store.sideView === 'json-viewer'">
+          <JsonViewer />
+        </div>
         <div v-if="store.sideView === 'about'">
           <AboutPage />
         </div>
@@ -107,6 +110,7 @@ import BoardSelector from "./BoardSelector.vue";
 import TreeConfig from "./TreeConfig.vue";
 import BunchingEffect from "./BunchingEffect.vue";
 import RunSolver from "./RunSolver.vue";
+import JsonViewer from "./JsonViewer.vue";
 import AboutPage from "./AboutPage.vue";
 import ResultViewer from "./ResultViewer.vue";
 
