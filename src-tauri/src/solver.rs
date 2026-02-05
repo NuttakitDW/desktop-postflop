@@ -768,10 +768,15 @@ pub fn game_estimate_json_size(game_state: tauri::State<Mutex<PostFlopGame>>) ->
 /// Export complete game data to JSON string (optimized with parallel processing)
 #[tauri::command]
 pub async fn game_export_json(game_state: tauri::State<'_, Mutex<PostFlopGame>>) -> Result<String, String> {
-    let game = game_state.lock().unwrap();
+    let mut game = game_state.lock().unwrap();
 
     #[cfg(feature = "json-export")]
     {
+        // Cache normalized weights for equity and EV calculation
+        if game.is_solved() {
+            game.cache_normalized_weights();
+        }
+
         let json_value = game.to_json_value()?;
         let json_string = serde_json::to_string(&json_value)
             .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
@@ -787,10 +792,15 @@ pub async fn game_export_json(game_state: tauri::State<'_, Mutex<PostFlopGame>>)
 /// Export complete game data directly to a JSON file (optimized for large files)
 #[tauri::command]
 pub async fn game_export_json_file(game_state: tauri::State<'_, Mutex<PostFlopGame>>, path: String) -> Result<(), String> {
-    let game = game_state.lock().unwrap();
+    let mut game = game_state.lock().unwrap();
 
     #[cfg(feature = "json-export")]
     {
+        // Cache normalized weights for equity and EV calculation
+        if game.is_solved() {
+            game.cache_normalized_weights();
+        }
+
         let json_value = game.to_json_value()?;
 
         // Write directly to file to avoid loading large strings into memory
