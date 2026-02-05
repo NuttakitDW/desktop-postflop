@@ -75,7 +75,10 @@ fn main() {
             game_get_chance_reports,
             game_load_file,
             game_save_file,
-            game_info
+            game_info,
+            game_estimate_json_size,
+            game_export_json,
+            game_export_json_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

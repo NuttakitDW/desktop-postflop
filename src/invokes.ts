@@ -397,3 +397,22 @@ export const gameSaveFile = async (
 export const gameInfo = async (): Promise<GameInfoResponse> => {
   return await invoke("game_info");
 };
+
+export type GameExportMetadata = {
+  estimated_size_bytes: number;
+  estimated_size_mb: number;
+  num_nodes: number;
+  warning?: string;
+};
+
+export const gameEstimateJsonSize = async (): Promise<GameExportMetadata> => {
+  return await invoke("game_estimate_json_size");
+};
+
+export const gameExportJson = async (): Promise<string> => {
+  return await invoke("game_export_json");
+};
+
+export const gameExportJsonFile = async (path: string): Promise<void> => {
+  await invoke("game_export_json_file", { path });
+};

@@ -722,3 +722,89 @@ pub fn game_info(game_state: tauri::State<Mutex<PostFlopGame>>) -> GameInfoRespo
         effective_stack,
     }
 }
+
+// JSON Export response types
+#[derive(Serialize)]
+pub struct GameExportMetadata {
+    pub estimated_size_bytes: usize,
+    pub estimated_size_mb: f64,
+    pub num_nodes: usize,
+    pub warning: Option<String>,
+}
+
+/// Estimate the size of the complete JSON export
+#[tauri::command]
+pub fn game_estimate_json_size(game_state: tauri::State<Mutex<PostFlopGame>>) -> Result<GameExportMetadata, String> {
+    let game = game_state.lock().unwrap();
+
+    #[cfg(feature = "json-export")]
+    {
+        let estimated_size_bytes = game.estimate_json_size();
+        let estimated_size_mb = estimated_size_bytes as f64 / (1024.0 * 1024.0);
+        let num_nodes: usize = game.num_nodes().iter().map(|&x| x as usize).sum();
+
+        let warning = if estimated_size_mb > 100.0 {
+            Some(format!("Large export size ({}MB). Consider direct file export.", estimated_size_mb.round() as usize))
+        } else if estimated_size_mb > 50.0 {
+            Some("Medium export size. Loading may take 10-30 seconds.".to_string())
+        } else {
+            None
+        };
+
+        Ok(GameExportMetadata {
+            estimated_size_bytes,
+            estimated_size_mb,
+            num_nodes,
+            warning,
+        })
+    }
+
+    #[cfg(not(feature = "json-export"))]
+    {
+        Err("JSON export feature not enabled".to_string())
+    }
+}
+
+/// Export complete game data to JSON string (optimized with parallel processing)
+#[tauri::command]
+pub async fn game_export_json(game_state: tauri::State<'_, Mutex<PostFlopGame>>) -> Result<String, String> {
+    let game = game_state.lock().unwrap();
+
+    #[cfg(feature = "json-export")]
+    {
+        let json_value = game.to_json_value()?;
+        let json_string = serde_json::to_string(&json_value)
+            .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+        Ok(json_string)
+    }
+
+    #[cfg(not(feature = "json-export"))]
+    {
+        Err("JSON export feature not enabled".to_string())
+    }
+}
+
+/// Export complete game data directly to a JSON file (optimized for large files)
+#[tauri::command]
+pub async fn game_export_json_file(game_state: tauri::State<'_, Mutex<PostFlopGame>>, path: String) -> Result<(), String> {
+    let game = game_state.lock().unwrap();
+
+    #[cfg(feature = "json-export")]
+    {
+        let json_value = game.to_json_value()?;
+
+        // Write directly to file to avoid loading large strings into memory
+        let file = std::fs::File::create(&path)
+            .map_err(|e| format!("Failed to create file: {}", e))?;
+
+        serde_json::to_writer_pretty(file, &json_value)
+            .map_err(|e| format!("Failed to write JSON: {}", e))?;
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "json-export"))]
+    {
+        Err("JSON export feature not enabled".to_string())
+    }
+}
