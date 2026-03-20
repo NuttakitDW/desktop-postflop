@@ -160,7 +160,6 @@ pub fn game_init(
         add_allin_threshold,
         force_allin_threshold,
         merging_threshold,
-        max_raises_per_street: 0, // 0 = unlimited
     };
 
     let mut action_tree = ActionTree::new(tree_config).unwrap();
@@ -617,22 +616,6 @@ pub fn game_load_file(
 ) -> Result<GameLoadResponse, String> {
     let start = std::time::Instant::now();
     println!("[UI] Loading file: {}", path);
-
-    // First, read header only to validate
-    match read_file_info(&path) {
-        Ok(info) => {
-            println!("[UI] File info:");
-            println!("  - Version: {}", info.version);
-            println!("  - Compression: {}", if info.compression_type == 0 { "none" } else { "zstd" });
-            println!("  - Data type: {}", info.data_type);
-            println!("  - Estimated memory: {} MB", info.estimated_memory_usage / 1_048_576);
-            println!("  - File size: {} MB", info.file_size / 1_048_576);
-            println!("  - Memo: {} chars", info.memo.len());
-        }
-        Err(e) => {
-            println!("[UI] Warning: Could not read file info: {}", e);
-        }
-    }
 
     println!("[UI] Starting full load...");
     let load_start = std::time::Instant::now();
